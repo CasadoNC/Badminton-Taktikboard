@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Badminton Taktikboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="toolbar" aria-label="Werkzeuge">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <h1>Badminton Taktikboard</h1>
+            <p>Spielzüge skizzieren, Positionen testen, Ansagen festhalten.</p>
+          </div>
+        </div>
+
+        <div class="tool-group" role="group" aria-label="Modus">
+          <button class="tool active" data-mode="select" title="Auswählen und verschieben">↕</button>
+          <button class="tool" data-mode="draw" title="Freihand zeichnen">✎</button>
+          <button class="tool" data-mode="arrow" title="Laufweg mit Pfeil zeichnen">➜</button>
+          <button class="tool" data-mode="erase" title="Linien entfernen">⌫</button>
+        </div>
+
+        <div class="tool-group compact" role="group" aria-label="Farbe">
+          <button class="swatch active" data-color="#ff4d4d" style="--swatch:#ff4d4d" title="Rot"></button>
+          <button class="swatch" data-color="#2563eb" style="--swatch:#2563eb" title="Blau"></button>
+          <button class="swatch" data-color="#111827" style="--swatch:#111827" title="Schwarz"></button>
+          <button class="swatch" data-color="#f59e0b" style="--swatch:#f59e0b" title="Gelb"></button>
+        </div>
+
+        <div class="tool-group">
+          <button id="addHome" class="command">+ Heim</button>
+          <button id="addAway" class="command">+ Gegner</button>
+          <button id="addShuttle" class="command">+ Shuttle</button>
+        </div>
+
+        <div class="tool-group">
+          <button id="clearLines" class="command">Linien löschen</button>
+          <button id="resetBoard" class="command danger">Reset</button>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="court-shell">
+          <div id="board" class="board" aria-label="Badmintonfeld">
+            <canvas id="drawingCanvas"></canvas>
+            <svg id="arrowLayer" class="arrow-layer" aria-hidden="true">
+              <defs>
+                <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z"></path>
+                </marker>
+              </defs>
+            </svg>
+            <div class="court">
+              <div class="net"></div>
+              <div class="center-line top"></div>
+              <div class="center-line bottom"></div>
+              <div class="short-service top"></div>
+              <div class="short-service bottom"></div>
+              <div class="long-service top"></div>
+              <div class="long-service bottom"></div>
+              <div class="side single left"></div>
+              <div class="side single right"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel" aria-label="Notizen">
+          <label class="notes-label" for="notes">Taktische Notizen</label>
+          <textarea id="notes" spellcheck="false">Aufschlag kurz auf Rückhand.
+Nach hohem Clear sofort Basisposition schließen.
+Vorne konsequent Netzkante attackieren.</textarea>
+
+          <div class="legend">
+            <span><i class="dot home-dot"></i> Heimspieler</span>
+            <span><i class="dot away-dot"></i> Gegner</span>
+            <span><i class="shuttle-mini"></i> Shuttle</span>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
