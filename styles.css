@@ -128,8 +128,42 @@ p {
   border-color: #18202f;
 }
 
-.command.danger {
+.command.danger,
+.tool.danger {
   color: #b91c1c;
+}
+
+button:disabled,
+button:disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.sequence-controls {
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.step-counter {
+  min-width: 42px;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.speed-control input {
+  width: 76px;
+  accent-color: #18202f;
 }
 
 .swatch {
@@ -321,6 +355,12 @@ p {
 
 .token:active {
   cursor: grabbing;
+}
+
+.token.sequencing {
+  transition:
+    left var(--sequence-duration, 900ms) ease-in-out,
+    top var(--sequence-duration, 900ms) ease-in-out;
 }
 
 .player {

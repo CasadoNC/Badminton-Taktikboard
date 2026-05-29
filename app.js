@@ -10,6 +10,13 @@ const resetButton = document.querySelector("#resetBoard");
 const addHomeButton = document.querySelector("#addHome");
 const addAwayButton = document.querySelector("#addAway");
 const addShuttleButton = document.querySelector("#addShuttle");
+const saveStepButton = document.querySelector("#saveStep");
+const prevStepButton = document.querySelector("#prevStep");
+const playSequenceButton = document.querySelector("#playSequence");
+const nextStepButton = document.querySelector("#nextStep");
+const deleteStepButton = document.querySelector("#deleteStep");
+const stepCounter = document.querySelector("#stepCounter");
+const sequenceSpeedInput = document.querySelector("#sequenceSpeed");
 
 const state = {
   mode: "select",
@@ -20,6 +27,12 @@ const state = {
   selectedArrow: null,
   drawing: false,
   arrowStart: null,
+  sequence: {
+    steps: [],
+    currentIndex: -1,
+    playing: false,
+    speed: 1,
+  },
 };
 
 function resizeCanvas() {
@@ -113,6 +126,11 @@ function seedBoard() {
 
 function clearLines() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  clearArrows();
+}
+
+function clearArrows() {
+  clearArrowSelection();
   arrowLayer.querySelectorAll("g.play-arrow").forEach((arrow) => arrow.remove());
 }
 
@@ -142,8 +160,8 @@ function ensureArrowMarker(color) {
   return markerId;
 }
 
-function drawArrow(start, end) {
-  const markerId = ensureArrowMarker(state.color);
+function drawArrow(start, end, color = state.color) {
+  const markerId = ensureArrowMarker(color);
   const arrow = document.createElementNS("http://www.w3.org/2000/svg", "g");
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -155,7 +173,7 @@ function drawArrow(start, end) {
   arrow.dataset.y2 = end.y;
 
   path.classList.add("play-arrow-line");
-  path.setAttribute("stroke", state.color);
+  path.setAttribute("stroke", color);
   path.setAttribute("marker-end", `url(#${markerId})`);
 
   hitArea.classList.add("play-arrow-hit");
@@ -219,6 +237,188 @@ function enableArrowDrag(arrow) {
   arrow.addEventListener("pointerup", () => {
     state.activeArrow = null;
   });
+}
+
+function getTokenSnapshots() {
+  const counts = {};
+  return [...board.querySelectorAll(".token")].map((token) => {
+    const type = token.dataset.type;
+    counts[type] = (counts[type] || 0) + 1;
+    return {
+      type,
+      index: counts[type],
+      left: Number.parseFloat(token.style.left),
+      top: Number.parseFloat(token.style.top),
+    };
+  });
+}
+
+function getArrowSnapshots() {
+  return [...arrowLayer.querySelectorAll("g.play-arrow")].map((arrow) => ({
+    x1: Number(arrow.dataset.x1),
+    y1: Number(arrow.dataset.y1),
+    x2: Number(arrow.dataset.x2),
+    y2: Number(arrow.dataset.y2),
+    color: arrow.querySelector(".play-arrow-line")?.getAttribute("stroke") || state.color,
+  }));
+}
+
+function captureBoardState() {
+  return {
+    tokens: getTokenSnapshots(),
+    arrows: getArrowSnapshots(),
+  };
+}
+
+function tokenKey(tokenSnapshot) {
+  return `${tokenSnapshot.type}-${tokenSnapshot.index}`;
+}
+
+function currentTokenMap() {
+  const counts = {};
+  const map = new Map();
+  board.querySelectorAll(".token").forEach((token) => {
+    const type = token.dataset.type;
+    counts[type] = (counts[type] || 0) + 1;
+    map.set(`${type}-${counts[type]}`, token);
+  });
+  return map;
+}
+
+function restoreArrows(arrows) {
+  clearArrows();
+  arrows.forEach((arrow) => {
+    drawArrow(
+      { x: arrow.x1, y: arrow.y1 },
+      { x: arrow.x2, y: arrow.y2 },
+      arrow.color,
+    );
+  });
+}
+
+function restoreTokens(tokens) {
+  board.querySelectorAll(".token").forEach((token) => token.remove());
+  state.tokenCounts = { home: 0, away: 0, shuttle: 0 };
+  tokens.forEach((token) => addToken(token.type, token.left, token.top));
+}
+
+function restoreBoardState(snapshot) {
+  stopSequence();
+  restoreTokens(snapshot.tokens);
+  restoreArrows(snapshot.arrows);
+}
+
+function animateTokenTo(token, target, duration) {
+  return new Promise((resolve) => {
+    token.classList.add("sequencing");
+    token.style.setProperty("--sequence-duration", `${duration}ms`);
+    requestAnimationFrame(() => {
+      token.style.left = `${target.left}%`;
+      token.style.top = `${target.top}%`;
+    });
+    window.setTimeout(() => {
+      token.classList.remove("sequencing");
+      token.style.removeProperty("--sequence-duration");
+      resolve();
+    }, duration);
+  });
+}
+
+async function animateToBoardState(snapshot) {
+  const duration = Math.round(900 / state.sequence.speed);
+  const existingTokens = currentTokenMap();
+  const targetKeys = new Set(snapshot.tokens.map(tokenKey));
+  const animations = [];
+
+  snapshot.tokens.forEach((target) => {
+    const existing = existingTokens.get(tokenKey(target));
+    if (existing) {
+      animations.push(animateTokenTo(existing, target, duration));
+    } else {
+      addToken(target.type, target.left, target.top);
+    }
+  });
+
+  existingTokens.forEach((token, key) => {
+    if (!targetKeys.has(key)) token.remove();
+  });
+
+  clearArrows();
+  await Promise.all(animations);
+  restoreArrows(snapshot.arrows);
+}
+
+function updateSequenceUi() {
+  const total = state.sequence.steps.length;
+  const current = state.sequence.currentIndex >= 0 ? state.sequence.currentIndex + 1 : 0;
+  stepCounter.textContent = `${current}/${total}`;
+  prevStepButton.disabled = total === 0 || state.sequence.currentIndex <= 0 || state.sequence.playing;
+  nextStepButton.disabled = total === 0 || state.sequence.currentIndex >= total - 1 || state.sequence.playing;
+  deleteStepButton.disabled = total === 0 || state.sequence.playing;
+  playSequenceButton.disabled = total < 2;
+  playSequenceButton.textContent = state.sequence.playing ? "Ⅱ" : "▶";
+}
+
+function saveStep() {
+  state.sequence.steps.push(captureBoardState());
+  state.sequence.currentIndex = state.sequence.steps.length - 1;
+  updateSequenceUi();
+}
+
+function goToStep(index) {
+  if (index < 0 || index >= state.sequence.steps.length || state.sequence.playing) return;
+  state.sequence.currentIndex = index;
+  restoreBoardState(state.sequence.steps[index]);
+  updateSequenceUi();
+}
+
+function stopSequence() {
+  if (!state.sequence.playing) return;
+  state.sequence.playing = false;
+  updateSequenceUi();
+}
+
+async function playSequence() {
+  if (state.sequence.playing) {
+    stopSequence();
+    return;
+  }
+
+  if (state.sequence.steps.length < 2) return;
+  state.sequence.playing = true;
+  setMode("select");
+  clearArrowSelection();
+
+  let index = state.sequence.currentIndex > -1 ? state.sequence.currentIndex : 0;
+  if (index >= state.sequence.steps.length - 1) index = 0;
+  state.sequence.currentIndex = index;
+  restoreBoardState(state.sequence.steps[index]);
+  state.sequence.playing = true;
+  updateSequenceUi();
+
+  while (state.sequence.playing && state.sequence.currentIndex < state.sequence.steps.length - 1) {
+    const nextIndex = state.sequence.currentIndex + 1;
+    await animateToBoardState(state.sequence.steps[nextIndex]);
+    if (!state.sequence.playing) break;
+    state.sequence.currentIndex = nextIndex;
+    updateSequenceUi();
+    await new Promise((resolve) => window.setTimeout(resolve, Math.round(260 / state.sequence.speed)));
+  }
+
+  state.sequence.playing = false;
+  updateSequenceUi();
+}
+
+function deleteCurrentStep() {
+  if (state.sequence.playing || state.sequence.currentIndex < 0) return;
+  state.sequence.steps.splice(state.sequence.currentIndex, 1);
+  if (state.sequence.steps.length === 0) {
+    state.sequence.currentIndex = -1;
+  } else {
+    state.sequence.currentIndex = Math.min(state.sequence.currentIndex, state.sequence.steps.length - 1);
+    restoreBoardState(state.sequence.steps[state.sequence.currentIndex]);
+  }
+  updateSequenceUi();
 }
 
 function eraseAt(point) {
@@ -303,9 +503,18 @@ addAwayButton.addEventListener("click", () => addToken("away", 50, 28));
 addShuttleButton.addEventListener("click", () => addToken("shuttle", 50, 50));
 clearLinesButton.addEventListener("click", clearLines);
 resetButton.addEventListener("click", () => {
+  stopSequence();
   clearLines();
   seedBoard();
   setMode("select");
+});
+saveStepButton.addEventListener("click", saveStep);
+prevStepButton.addEventListener("click", () => goToStep(state.sequence.currentIndex - 1));
+nextStepButton.addEventListener("click", () => goToStep(state.sequence.currentIndex + 1));
+playSequenceButton.addEventListener("click", playSequence);
+deleteStepButton.addEventListener("click", deleteCurrentStep);
+sequenceSpeedInput.addEventListener("input", () => {
+  state.sequence.speed = Number(sequenceSpeedInput.value);
 });
 
 window.addEventListener("keydown", (event) => {
@@ -320,3 +529,4 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 seedBoard();
 setMode("select");
+updateSequenceUi();

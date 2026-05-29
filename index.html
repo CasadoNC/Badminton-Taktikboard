@@ -41,6 +41,19 @@
           <button id="clearLines" class="command">Linien löschen</button>
           <button id="resetBoard" class="command danger">Reset</button>
         </div>
+
+        <div class="tool-group sequence-controls" aria-label="Sequenz">
+          <button id="saveStep" class="command">+ Schritt</button>
+          <button id="prevStep" class="tool" title="Vorheriger Schritt">‹</button>
+          <button id="playSequence" class="tool" title="Sequenz abspielen">▶</button>
+          <button id="nextStep" class="tool" title="Nächster Schritt">›</button>
+          <button id="deleteStep" class="tool danger" title="Schritt löschen">×</button>
+          <output id="stepCounter" class="step-counter">0/0</output>
+          <label class="speed-control" title="Abspielgeschwindigkeit">
+            <span>Tempo</span>
+            <input id="sequenceSpeed" type="range" min="0.5" max="2" value="1" step="0.25" />
+          </label>
+        </div>
       </section>
 
       <section class="workspace">
