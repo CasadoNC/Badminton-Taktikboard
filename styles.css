@@ -166,6 +166,21 @@ button:disabled:hover {
   accent-color: #18202f;
 }
 
+.save-controls {
+  gap: 7px;
+}
+
+.file-input {
+  display: none;
+}
+
+.storage-status {
+  min-width: 86px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .swatch {
   width: 30px;
   height: 30px;

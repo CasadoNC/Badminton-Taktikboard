@@ -10,6 +10,7 @@ const resetButton = document.querySelector("#resetBoard");
 const addHomeButton = document.querySelector("#addHome");
 const addAwayButton = document.querySelector("#addAway");
 const addShuttleButton = document.querySelector("#addShuttle");
+const notesInput = document.querySelector("#notes");
 const saveStepButton = document.querySelector("#saveStep");
 const prevStepButton = document.querySelector("#prevStep");
 const playSequenceButton = document.querySelector("#playSequence");
@@ -17,6 +18,14 @@ const nextStepButton = document.querySelector("#nextStep");
 const deleteStepButton = document.querySelector("#deleteStep");
 const stepCounter = document.querySelector("#stepCounter");
 const sequenceSpeedInput = document.querySelector("#sequenceSpeed");
+const saveProjectButton = document.querySelector("#saveProject");
+const loadProjectButton = document.querySelector("#loadProject");
+const exportProjectButton = document.querySelector("#exportProject");
+const importProjectButton = document.querySelector("#importProject");
+const importFileInput = document.querySelector("#importFile");
+const storageStatus = document.querySelector("#storageStatus");
+
+const STORAGE_KEY = "badminton-taktikboard-project";
 
 const state = {
   mode: "select",
@@ -127,6 +136,35 @@ function seedBoard() {
 function clearLines() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   clearArrows();
+}
+
+function setStorageStatus(message) {
+  storageStatus.textContent = message;
+  window.clearTimeout(setStorageStatus.timeout);
+  setStorageStatus.timeout = window.setTimeout(() => {
+    storageStatus.textContent = "";
+  }, 2600);
+}
+
+function canvasImage() {
+  return canvas.toDataURL("image/png");
+}
+
+function restoreCanvas(imageData) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!imageData) return;
+
+  const image = new Image();
+  image.addEventListener("load", () => {
+    const rect = board.getBoundingClientRect();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, rect.width, rect.height);
+  });
+  image.src = imageData;
+}
+
+function cloneData(data) {
+  return JSON.parse(JSON.stringify(data));
 }
 
 function clearArrows() {
@@ -267,6 +305,7 @@ function captureBoardState() {
   return {
     tokens: getTokenSnapshots(),
     arrows: getArrowSnapshots(),
+    drawing: canvasImage(),
   };
 }
 
@@ -305,6 +344,7 @@ function restoreTokens(tokens) {
 function restoreBoardState(snapshot) {
   stopSequence();
   restoreTokens(snapshot.tokens);
+  restoreCanvas(snapshot.drawing);
   restoreArrows(snapshot.arrows);
 }
 
@@ -345,6 +385,7 @@ async function animateToBoardState(snapshot) {
 
   clearArrows();
   await Promise.all(animations);
+  restoreCanvas(snapshot.drawing);
   restoreArrows(snapshot.arrows);
 }
 
@@ -360,9 +401,10 @@ function updateSequenceUi() {
 }
 
 function saveStep() {
-  state.sequence.steps.push(captureBoardState());
+  state.sequence.steps.push(cloneData(captureBoardState()));
   state.sequence.currentIndex = state.sequence.steps.length - 1;
   updateSequenceUi();
+  setStorageStatus("Schritt gespeichert");
 }
 
 function goToStep(index) {
@@ -419,6 +461,83 @@ function deleteCurrentStep() {
     restoreBoardState(state.sequence.steps[state.sequence.currentIndex]);
   }
   updateSequenceUi();
+  setStorageStatus("Schritt gelöscht");
+}
+
+function projectSnapshot() {
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    board: captureBoardState(),
+    notes: notesInput.value,
+    sequence: {
+      steps: cloneData(state.sequence.steps),
+      currentIndex: state.sequence.currentIndex,
+      speed: state.sequence.speed,
+    },
+  };
+}
+
+function restoreProject(project) {
+  if (!project || !project.board || !project.sequence) {
+    throw new Error("Diese Datei ist kein Taktikboard-Projekt.");
+  }
+
+  stopSequence();
+  notesInput.value = project.notes || "";
+  state.sequence.steps = project.sequence.steps || [];
+  state.sequence.currentIndex = Math.min(
+    project.sequence.currentIndex ?? state.sequence.steps.length - 1,
+    state.sequence.steps.length - 1,
+  );
+  state.sequence.speed = Number(project.sequence.speed || 1);
+  sequenceSpeedInput.value = String(state.sequence.speed);
+  restoreBoardState(project.board);
+  updateSequenceUi();
+}
+
+function saveProject() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(projectSnapshot()));
+  setStorageStatus("Gespeichert");
+}
+
+function loadProject() {
+  const savedProject = localStorage.getItem(STORAGE_KEY);
+  if (!savedProject) {
+    setStorageStatus("Nichts gespeichert");
+    return;
+  }
+
+  restoreProject(JSON.parse(savedProject));
+  setStorageStatus("Geladen");
+}
+
+function exportProject() {
+  const blob = new Blob([JSON.stringify(projectSnapshot(), null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `badminton-spielzug-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setStorageStatus("Exportiert");
+}
+
+function importProjectFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      restoreProject(JSON.parse(reader.result));
+      setStorageStatus("Importiert");
+    } catch (error) {
+      setStorageStatus(error.message);
+    }
+  });
+  reader.readAsText(file);
 }
 
 function eraseAt(point) {
@@ -515,6 +634,14 @@ playSequenceButton.addEventListener("click", playSequence);
 deleteStepButton.addEventListener("click", deleteCurrentStep);
 sequenceSpeedInput.addEventListener("input", () => {
   state.sequence.speed = Number(sequenceSpeedInput.value);
+});
+saveProjectButton.addEventListener("click", saveProject);
+loadProjectButton.addEventListener("click", loadProject);
+exportProjectButton.addEventListener("click", exportProject);
+importProjectButton.addEventListener("click", () => importFileInput.click());
+importFileInput.addEventListener("change", () => {
+  importProjectFile(importFileInput.files[0]);
+  importFileInput.value = "";
 });
 
 window.addEventListener("keydown", (event) => {

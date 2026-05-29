@@ -54,6 +54,15 @@
             <input id="sequenceSpeed" type="range" min="0.5" max="2" value="1" step="0.25" />
           </label>
         </div>
+
+        <div class="tool-group save-controls" role="group" aria-label="Speichern">
+          <button id="saveProject" class="command">Speichern</button>
+          <button id="loadProject" class="command">Laden</button>
+          <button id="exportProject" class="command">Export</button>
+          <button id="importProject" class="command">Import</button>
+          <input id="importFile" class="file-input" type="file" accept="application/json,.json" />
+          <span id="storageStatus" class="storage-status" aria-live="polite"></span>
+        </div>
       </section>
 
       <section class="workspace">
