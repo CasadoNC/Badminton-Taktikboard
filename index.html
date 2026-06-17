@@ -21,14 +21,24 @@
           <button class="tool active" data-mode="select" title="Auswählen und verschieben">↕</button>
           <button class="tool" data-mode="draw" title="Freihand zeichnen">✎</button>
           <button class="tool" data-mode="arrow" title="Laufweg mit Pfeil zeichnen">➜</button>
-          <button class="tool" data-mode="erase" title="Linien entfernen">⌫</button>
+          <button class="tool" data-mode="erase" title="Radierer" aria-label="Radierer">⌫</button>
         </div>
 
-        <div class="tool-group compact" role="group" aria-label="Farbe">
-          <button class="swatch active" data-color="#ff4d4d" style="--swatch:#ff4d4d" title="Rot"></button>
-          <button class="swatch" data-color="#2563eb" style="--swatch:#2563eb" title="Blau"></button>
-          <button class="swatch" data-color="#111827" style="--swatch:#111827" title="Schwarz"></button>
-          <button class="swatch" data-color="#f59e0b" style="--swatch:#f59e0b" title="Gelb"></button>
+        <div class="tool-group" role="group" aria-label="Flaechenmodus">
+          <button class="tool" data-mode="area" title="Flaeche markieren">F</button>
+        </div>
+
+        <div class="tool-group color-controls" role="group" aria-label="Farbe">
+          <button id="colorMenuButton" class="color-menu-button" type="button" aria-label="Farbe auswählen" aria-haspopup="menu" aria-expanded="false">
+            <span id="colorPreview" class="color-preview" aria-hidden="true"></span>
+          </button>
+          <div id="colorMenu" class="color-menu" role="menu" hidden>
+            <button class="color-option active" type="button" data-color="#ff4d4d" style="--swatch:#ff4d4d" title="Rot" aria-label="Rot"></button>
+            <button class="color-option" type="button" data-color="#facc15" style="--swatch:#facc15" title="Gelb" aria-label="Gelb"></button>
+            <button class="color-option" type="button" data-color="#22c55e" style="--swatch:#22c55e" title="Grün" aria-label="Grün"></button>
+            <button class="color-option" type="button" data-color="#2563eb" style="--swatch:#2563eb" title="Blau" aria-label="Blau"></button>
+            <button class="color-option" type="button" data-color="#111827" style="--swatch:#111827" title="Schwarz" aria-label="Schwarz"></button>
+          </div>
         </div>
 
         <div class="tool-group">
@@ -38,7 +48,6 @@
         </div>
 
         <div class="tool-group">
-          <button id="clearLines" class="command">Linien löschen</button>
           <button id="resetBoard" class="command danger">Reset</button>
         </div>
 
@@ -56,8 +65,6 @@
         </div>
 
         <div class="tool-group save-controls" role="group" aria-label="Speichern">
-          <button id="saveProject" class="command">Speichern</button>
-          <button id="loadProject" class="command">Laden</button>
           <button id="exportProject" class="command">Export</button>
           <button id="importProject" class="command">Import</button>
           <input id="importFile" class="file-input" type="file" accept="application/json,.json" />
@@ -67,8 +74,10 @@
 
       <section class="workspace">
         <div class="court-shell">
+          <h2 id="boardTitle" class="board-title" hidden></h2>
           <div id="board" class="board" aria-label="Badmintonfeld">
             <canvas id="drawingCanvas"></canvas>
+            <div id="areaLayer" class="area-layer" aria-hidden="true"></div>
             <svg id="arrowLayer" class="arrow-layer" aria-hidden="true">
               <defs>
                 <marker id="arrowHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -91,6 +100,9 @@
         </div>
 
         <aside class="panel" aria-label="Notizen">
+          <label class="notes-label" for="projectTitle">Titel</label>
+          <input id="projectTitle" class="title-input" type="text" placeholder="Titel eingeben" autocomplete="off" />
+
           <label class="notes-label" for="notes">Taktische Notizen</label>
           <textarea id="notes" spellcheck="false">Aufschlag kurz auf Rückhand.
 Nach hohem Clear sofort Basisposition schließen.
@@ -99,7 +111,7 @@ Vorne konsequent Netzkante attackieren.</textarea>
           <div class="legend">
             <span><i class="dot home-dot"></i> Heimspieler</span>
             <span><i class="dot away-dot"></i> Gegner</span>
-            <span><i class="shuttle-mini"></i> Shuttle</span>
+            <span><img class="shuttle-mini" src="assets/shuttle.svg" alt="" /> Shuttle</span>
           </div>
         </aside>
       </section>
